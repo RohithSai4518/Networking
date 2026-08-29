@@ -5,7 +5,7 @@ Detects port scans, high entropy payloads, and malicious signatures.
 
 import math
 import re
-from typing import List, Dict, Set, Optional, Tuple
+from typing import List, Dict, Set, Optional, Tuple, Any
 from collections import defaultdict
 from datetime import datetime, timedelta
 from core.models import ParsedPacket, SecurityAnomaly, ThreatSeverity, ProtocolType
@@ -32,7 +32,7 @@ class AnomalyDetector:
         self.scanned_ports: Dict[str, Set[int]] = {}
         self.anomaly_counter = 0
         self.connection_attempts: Dict[str, List[datetime]] = defaultdict(list)
-        self dns_queries: Dict[str, List[str]] = defaultdict(list)
+        self.dns_queries: Dict[str, List[str]] = defaultdict(list)
         self.high_entropy_threshold = 7.0
         self.syn_flood_threshold = 100
         self.dns_tunneling_threshold = 10
@@ -87,29 +87,30 @@ class AnomalyDetector:
                 ))
 
         # High entropy payload detection (potential encryption/exfiltration)
-        if packet.payload and len(packet.payload) > 50:
+        if packet.payload_hex and len(packet.payload_hex) > 50:
             try:
-                payload_str = packet.payload.decode('utf-8', errors='ignore')
-                entropy = calculate_entropy(payload_str)
-                if entropy > self.high_entropy_threshold:
-                    self.anomaly_counter += 1
-                    anomalies.append(SecurityAnomaly(
-                        id=f"ANOM-{self.anomaly_counter}",
-                        timestamp=meta.timestamp,
-                        title="High Entropy Payload Detected",
-                        severity=ThreatSeverity.MEDIUM,
-                        source_ip=src_ip,
-                        target_ip=dst_ip,
-                        description=f"Payload entropy {entropy:.2f} exceeds threshold {self.high_entropy_threshold}. Possible encryption or data exfiltration.",
-                        remediation_tip="Inspect payload content and investigate destination.",
-                    ))
+                payload_str = packet.payload_text or ""
+                if len(payload_str) > 50:
+                    entropy = calculate_entropy(payload_str)
+                    if entropy > self.high_entropy_threshold:
+                        self.anomaly_counter += 1
+                        anomalies.append(SecurityAnomaly(
+                            id=f"ANOM-{self.anomaly_counter}",
+                            timestamp=meta.timestamp,
+                            title="High Entropy Payload Detected",
+                            severity=ThreatSeverity.MEDIUM,
+                            source_ip=src_ip,
+                            target_ip=dst_ip,
+                            description=f"Payload entropy {entropy:.2f} exceeds threshold {self.high_entropy_threshold}. Possible encryption or data exfiltration.",
+                            remediation_tip="Inspect payload content and investigate destination.",
+                        ))
             except:
                 pass
 
         # DNS tunneling detection
-        if meta.protocol == "DNS" and packet.payload:
+        if meta.highest_protocol == "DNS" and packet.payload_hex:
             try:
-                dns_query = self._extract_dns_query(packet.payload)
+                dns_query = self._extract_dns_query(packet.payload_hex)
                 if dns_query:
                     self.dns_queries[src_ip].append(dns_query)
                     # Check for unusual subdomain length
@@ -129,7 +130,7 @@ class AnomalyDetector:
                 pass
 
         # ARP spoofing detection
-        if meta.protocol == "ARP" and hasattr(packet, 'layers'):
+        if meta.highest_protocol == "ARP" and hasattr(packet, 'layers') and packet.layers:
             arp_layer = next((layer for layer in packet.layers if layer.layer_name == "ARP"), None)
             if arp_layer:
                 src_mac = arp_layer.fields.get("Sender MAC")
@@ -154,9 +155,11 @@ class AnomalyDetector:
 
         return anomalies
 
-    def _extract_dns_query(self, payload: bytes) -> Optional[str]:
-        """Extract DNS query from payload."""
+    def _extract_dns_query(self, payload_hex: str) -> Optional[str]:
+        """Extract DNS query from payload hex string."""
         try:
+            # Convert hex to bytes
+            payload = bytes.fromhex(payload_hex)
             # Simple DNS query extraction
             if len(payload) > 12:
                 # Skip DNS header (12 bytes)
