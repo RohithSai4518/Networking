@@ -41,6 +41,53 @@ class TestSecurityEngine(unittest.TestCase):
         self.assertGreater(len(anomalies_triggered), 0)
         self.assertEqual(anomalies_triggered[0].title, "Port Scan Activity Detected")
 
+    def test_high_entropy_payload_detection(self):
+        detector = AnomalyDetector()
+        detector.high_entropy_threshold = 4.0
+        random_text = "k9#mQ!2@vL$8*zP&5^wR(1)bN~4`eY+7-uI=3/oX" * 3
+        meta = PacketMetadata(
+            id=101,
+            timestamp=1000.0,
+            length=len(random_text),
+            highest_protocol="TCP",
+            src_ip="192.168.1.10",
+            dst_ip="10.0.0.1",
+        )
+        pkt = ParsedPacket(
+            metadata=meta,
+            layers=[],
+            raw_hex="aa" * 60,
+            payload_hex="bb" * 60,
+            payload_text=random_text,
+        )
+        anomalies = detector.analyze_packet(pkt)
+        self.assertTrue(any(a.title == "High Entropy Payload Detected" for a in anomalies))
+
+    def test_syn_flood_detection(self):
+        detector = AnomalyDetector()
+        detector.syn_flood_threshold = 5
+        attacker = "192.168.1.99"
+        target = "192.168.1.1"
+
+        triggered = []
+        for i in range(10):
+            meta = PacketMetadata(
+                id=200 + i,
+                timestamp=1000.0 + i,
+                length=64,
+                highest_protocol="TCP",
+                src_ip=attacker,
+                dst_ip=target,
+                tcp_flags=["SYN"],
+            )
+            pkt = ParsedPacket(metadata=meta, layers=[], raw_hex="", payload_hex="", payload_text="")
+            anoms = detector.analyze_packet(pkt)
+            if anoms:
+                triggered.extend(anoms)
+
+        self.assertTrue(any(a.title == "SYN Flood Attack Detected" for a in triggered))
+
 
 if __name__ == "__main__":
     unittest.main()
+
