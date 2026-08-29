@@ -1,0 +1,18 @@
+{
+  "name": "netlens-pro",
+  "version": "2.0.0",
+  "description": "NetLens Pro - Full-Stack Network Protocol Analyzer & Deep Packet Inspection Suite",
+  "main": "main.py",
+  "scripts": {
+    "start": "python main.py",
+    "test": "pytest"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.1",
+    "vis-network": "^9.1.9"
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5"
+  },
+  "private": true
+}
