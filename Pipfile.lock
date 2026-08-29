@@ -1,0 +1,50 @@
+{
+    "_meta": {
+        "hash": {
+            "sha256": "a3f5c71c50ee7b8bf6739db8c545366479f67a2139ee5e492aa62f7902d33458"
+        },
+        "pipfile-spec": 6,
+        "requires": {
+            "python_version": "3.12"
+        },
+        "sources": [
+            {
+                "name": "pypi",
+                "url": "https://pypi.org/simple",
+                "verify_ssl": true
+            }
+        ]
+    },
+    "default": {
+        "fastapi": {
+            "hashes": [],
+            "version": "==0.141.1"
+        },
+        "pydantic": {
+            "hashes": [],
+            "version": "==2.13.5"
+        },
+        "python-multipart": {
+            "hashes": [],
+            "version": "==0.0.32"
+        },
+        "starlette": {
+            "hashes": [],
+            "version": "==1.6.0"
+        },
+        "uvicorn": {
+            "hashes": [],
+            "version": "==0.52.4"
+        },
+        "websockets": {
+            "hashes": [],
+            "version": "==17.1"
+        }
+    },
+    "develop": {
+        "pytest": {
+            "hashes": [],
+            "version": "==9.1.1"
+        }
+    }
+}

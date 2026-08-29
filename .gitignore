@@ -78,9 +78,6 @@ ipython_config.py
 # pyenv
 .python-version
 
-# pipenv
-Pipfile.lock
-
 # PEP 582
 __pypackages__/
 
@@ -133,5 +130,4 @@ Thumbs.db
 *.pcap
 *.pcapng
 NetLens_Pro_Networking_Project.zip
-package-lock.json
-package.json
+*.zip
