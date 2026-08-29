@@ -32,6 +32,29 @@ class TestPcapEngine(unittest.TestCase):
         self.assertAlmostEqual(ts, pkt1_ts, places=4)
         self.assertEqual(read_bytes, eth)
 
+    def test_multiple_packets_roundtrip(self):
+        buf = io.BytesIO()
+        writer = PcapWriter(buf)
+
+        sample_packets = [
+            (1700000001.0, b"\x00\x11\x22\x33\x44\x55\x66\x77\x88\x99\xaa\xbb\x08\x00" + b"Packet 1"),
+            (1700000002.5, b"\x00\x11\x22\x33\x44\x55\x66\x77\x88\x99\xaa\xbb\x08\x00" + b"Packet 2"),
+            (1700000003.9, b"\x00\x11\x22\x33\x44\x55\x66\x77\x88\x99\xaa\xbb\x08\x00" + b"Packet 3"),
+        ]
+
+        for ts, pkt_data in sample_packets:
+            writer.write_packet(pkt_data, ts)
+
+        buf.seek(0)
+        reader = PcapReader(buf)
+        read_back = reader.read_packets()
+
+        self.assertEqual(len(read_back), 3)
+        for i, (ts, pkt_data) in enumerate(sample_packets):
+            self.assertAlmostEqual(read_back[i][0], ts, places=3)
+            self.assertEqual(read_back[i][1], pkt_data)
+
 
 if __name__ == "__main__":
     unittest.main()
+
