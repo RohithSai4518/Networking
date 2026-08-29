@@ -35,16 +35,54 @@ NetLens Pro is an end-to-end, modular, and high-performance network analysis and
 
 ---
 
-## 🚀 Quick Start
+---
+
+## 📦 Dependencies & Installation
+
+NetLens Pro provides complete dependency manifests and deterministic lockfiles across standard package ecosystems (`poetry.lock`, `requirements.lock`, `Pipfile.lock`).
+
+### Manifests & Lockfiles
+
+| Ecosystem / Tool | Manifest | Lockfile |
+| :--- | :--- | :--- |
+| **Poetry** (Recommended) | `pyproject.toml` | `poetry.lock` |
+| **pip / pip-tools** | `requirements.txt` | `requirements.lock` |
+| **Pipenv** | `Pipfile` | `Pipfile.lock` |
 
 ### 1. Installation
 
-Install dependencies:
+#### Option A: Using Poetry (Recommended)
 ```bash
+# Install dependencies from poetry.lock
+poetry install
+
+# Run within poetry environment
+poetry run python main.py
+```
+
+#### Option B: Using pip with deterministic lockfile
+```bash
+# Create and activate a virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install locked dependencies
+pip install -r requirements.lock
+# Or install using base requirements manifest
 pip install -r requirements.txt
 ```
 
-### 2. Run the Application
+#### Option C: Using Pipenv
+```bash
+# Install from Pipfile.lock
+pipenv install --deploy
+```
+
+---
+
+## 🚀 Quick Start
+
+### 1. Run the Application
 
 ```bash
 python main.py
@@ -54,8 +92,13 @@ Open your browser and navigate to:
 http://127.0.0.1:8000
 ```
 
-### 3. Run Test Suite
+### 2. Run Test Suite
 
 ```bash
+# Run with pytest
+python -m pytest
+
+# Or with unittest
 python -m unittest discover tests
 ```
+
