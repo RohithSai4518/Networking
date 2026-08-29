@@ -1,0 +1,20 @@
+[project]
+name = "netlens-pro"
+version = "0.1.0"
+description = "Full-Stack Network Protocol Analyzer and Deep Packet Inspection Suite"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+    "websockets>=11.0.0",
+    "python-multipart>=0.0.9",
+    "pytest>=7.4.0",
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+package-mode = false
