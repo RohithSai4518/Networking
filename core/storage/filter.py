@@ -32,45 +32,96 @@ class FilterEngine:
                 self.filter_stats["matches"] += 1
             return result
 
-        # Payload content filters
-        if "payload contains" in expr:
+        # Payload content filters (single)
+        if "payload contains" in expr and " and " not in expr and " or " not in expr:
             target = expr.split("payload contains", 1)[1].strip().strip("'").strip('"')
             result = target in payload_text
             if result:
                 self.filter_stats["matches"] += 1
             return result
 
-        # IP address filters
-        if "ip.src" in expr or "src_ip" in expr:
-            result = self._evaluate_ip_filter(expr, meta.src_ip)
-            if result:
-                self.filter_stats["matches"] += 1
-            return result
-
-        if "ip.dst" in expr or "dst_ip" in expr:
-            result = self._evaluate_ip_filter(expr, meta.dst_ip)
-            if result:
-                self.filter_stats["matches"] += 1
-            return result
-
-        # Port filters
-        if "dst_port" in expr or "port" in expr:
-            result = self._evaluate_port_filter(expr, meta.dst_port)
-            if result:
-                self.filter_stats["matches"] += 1
-            return result
-
-        if "src_port" in expr:
-            result = self._evaluate_port_filter(expr, meta.src_port)
-            if result:
-                self.filter_stats["matches"] += 1
-            return result
-
         # Complex expressions with AND/OR
-        result = self._evaluate_complex_expression(expr, packet)
-        if result:
-            self.filter_stats["matches"] += 1
-        return result
+        try:
+            # Handle AND expressions
+            if " and " in expr.lower():
+                parts = expr.split(" and ")
+                results = []
+                for part in parts:
+                    part = part.strip()
+                    # Evaluate each part
+                    if "payload contains" in part:
+                        target = part.split("payload contains", 1)[1].strip().strip("'").strip('"')
+                        result = target in payload_text
+                    elif "ip.src" in part or "src_ip" in part:
+                        result = self._evaluate_ip_filter(part, meta.src_ip)
+                    elif "ip.dst" in part or "dst_ip" in part:
+                        result = self._evaluate_ip_filter(part, meta.dst_ip)
+                    elif "dst_port" in part or "port" in part:
+                        result = self._evaluate_port_filter(part, meta.dst_port)
+                    elif "src_port" in part:
+                        result = self._evaluate_port_filter(part, meta.src_port)
+                    elif part in ("http", "dns", "tcp", "udp", "arp", "icmp", "tls", "dhcp", "ipv4", "ipv6"):
+                        result = meta.highest_protocol.lower() == part or any(l.protocol.value.lower() == part for l in packet.layers)
+                    else:
+                        result = True
+                    results.append(result)
+                final_result = all(results)
+                if final_result:
+                    self.filter_stats["matches"] += 1
+                return final_result
+            
+            # Handle OR expressions
+            if " or " in expr.lower():
+                parts = expr.split(" or ")
+                results = []
+                for part in parts:
+                    part = part.strip()
+                    if "payload contains" in part:
+                        target = part.split("payload contains", 1)[1].strip().strip("'").strip('"')
+                        result = target in payload_text
+                    elif "ip.src" in part or "src_ip" in part:
+                        result = self._evaluate_ip_filter(part, meta.src_ip)
+                    elif "ip.dst" in part or "dst_ip" in part:
+                        result = self._evaluate_ip_filter(part, meta.dst_ip)
+                    elif "dst_port" in part or "port" in part:
+                        result = self._evaluate_port_filter(part, meta.dst_port)
+                    elif "src_port" in part:
+                        result = self._evaluate_port_filter(part, meta.src_port)
+                    elif part in ("http", "dns", "tcp", "udp", "arp", "icmp", "tls", "dhcp", "ipv4", "ipv6"):
+                        result = meta.highest_protocol.lower() == part or any(l.protocol.value.lower() == part for l in packet.layers)
+                    else:
+                        result = True
+                    results.append(result)
+                final_result = any(results)
+                if final_result:
+                    self.filter_stats["matches"] += 1
+                return final_result
+            
+            # Check individual conditions
+            if "ip.src" in expr or "src_ip" in expr:
+                result = self._evaluate_ip_filter(expr, meta.src_ip)
+                if result:
+                    self.filter_stats["matches"] += 1
+                return result
+            if "ip.dst" in expr or "dst_ip" in expr:
+                result = self._evaluate_ip_filter(expr, meta.dst_ip)
+                if result:
+                    self.filter_stats["matches"] += 1
+                return result
+            if "dst_port" in expr or "port" in expr:
+                result = self._evaluate_port_filter(expr, meta.dst_port)
+                if result:
+                    self.filter_stats["matches"] += 1
+                return result
+            if "src_port" in expr:
+                result = self._evaluate_port_filter(expr, meta.src_port)
+                if result:
+                    self.filter_stats["matches"] += 1
+                return result
+            
+            return False
+        except:
+            return False
 
     def _evaluate_ip_filter(self, expr: str, ip_value: Optional[str]) -> bool:
         """Evaluate IP address filter expressions."""
@@ -83,13 +134,13 @@ class FilterEngine:
             parts = expr.split("==")
             if len(parts) == 2:
                 target = parts[1].strip().strip("'").strip('"').lower()
-                return ip_value == target
+                return ip_value == target.lower()
         
         if "!=" in expr:
             parts = expr.split("!=")
             if len(parts) == 2:
                 target = parts[1].strip().strip("'").strip('"').lower()
-                return ip_value != target
+                return ip_value != target.lower()
         
         if "in" in expr:
             # Handle CIDR notation or IP ranges
@@ -152,19 +203,20 @@ class FilterEngine:
                 k, v = tok.split("==", 1)
                 k, v = k.strip(), v.strip().strip("'").strip('"')
                 if k in ("ip.src", "src_ip"):
-                    return (meta.src_ip or "").lower() == v
+                    return (meta.src_ip or "").lower() == v.lower()
                 if k in ("ip.dst", "dst_ip"):
-                    return (meta.dst_ip or "").lower() == v
+                    return (meta.dst_ip or "").lower() == v.lower()
                 if k in ("dst_port", "port"):
                     return str(meta.dst_port) == v
                 if k in ("src_port"):
                     return str(meta.src_port) == v
-            return True
+            return False
 
         expr_upper = expr.upper()
         if " AND " in expr_upper or " and " in expr:
             parts = expr.replace(" and ", " AND ").split(" AND ")
-            return all(eval_token(p.strip()) for p in parts)
+            results = [eval_token(p.strip()) for p in parts]
+            return all(results)
         if " OR " in expr_upper or " or " in expr:
             parts = expr.replace(" or ", " OR ").split(" OR ")
             return any(eval_token(p.strip()) for p in parts)
@@ -222,7 +274,7 @@ class AdvancedFilterEngine(FilterEngine):
     def __init__(self):
         super().__init__()
         self.mac_address_cache: Dict[str, Set[str]] = {}
-        self dns_cache: Dict[str, List[str]] = {}
+        self.dns_cache: Dict[str, List[str]] = {}
 
     def evaluate(self, packet: ParsedPacket, expression: str) -> bool:
         """Enhanced evaluation with MAC address and DNS filtering."""
