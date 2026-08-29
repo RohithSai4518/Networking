@@ -104,6 +104,31 @@ class TestProtocolDecoders(unittest.TestCase):
         self.assertEqual(layer.fields["Status Code"], 200)
         self.assertEqual(layer.fields["Headers"]["Content-Type"], "text/plain")
 
+    def test_icmp_decoder(self):
+        # Type 8 Code 0 Echo Request, ID 0x1234, Seq 0x0001
+        icmp_pkt = struct.pack("!BBHHH", 8, 0, 0x5c4b, 0x1234, 1) + b"PingPayload"
+        layer, offset = decode_icmp(icmp_pkt, 0)
+        self.assertIsNotNone(layer)
+        self.assertEqual(layer.fields["Type"], 8)
+        self.assertEqual(layer.fields["Type Name"], "Echo Request")
+        self.assertEqual(layer.fields["Identifier"], 0x1234)
+        self.assertEqual(layer.fields["Sequence Number"], 1)
+
+    def test_ipv6_decoder(self):
+        src_ip = "2001:db8::1"
+        dst_ip = "2001:db8::2"
+        src_bytes = socket.inet_pton(socket.AF_INET6, src_ip)
+        dst_bytes = socket.inet_pton(socket.AF_INET6, dst_ip)
+        vtc_flow = (6 << 28)
+        hdr = struct.pack("!IHBB", vtc_flow, 16, 58, 64) + src_bytes + dst_bytes
+        layer, next_hdr, offset = decode_ipv6(hdr, 0)
+        self.assertIsNotNone(layer)
+        self.assertEqual(layer.fields["Version"], 6)
+        self.assertEqual(layer.fields["Source IP"], src_ip)
+        self.assertEqual(layer.fields["Destination IP"], dst_ip)
+        self.assertEqual(next_hdr, 58)
+        self.assertEqual(offset, 40)
+
     def test_master_packet_decoder(self):
         # Build complete Ethernet + IPv4 + UDP + DNS frame
         dns_bytes = build_dns_query("test.local", 1)
@@ -122,3 +147,4 @@ class TestProtocolDecoders(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
